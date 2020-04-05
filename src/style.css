@@ -1,0 +1,272 @@
+:root {
+  --primary-bg: #191818;
+  --primary-fg: #999;
+  --secondary-bg: #7289da;
+  --secondary-fg: #fff;
+  --online: green;
+  --light-highlight: #fff3;
+  --light-highlight-fg: #fff;
+  --disabled-bg: #999;
+  --disabled-fg: #fff;
+  --link: #0077cc;
+  --link-light: #6cbbf7;
+}
+
+html {
+  height: 100%;
+}
+
+html,
+body,
+main,
+div {
+  display: grid;
+  box-sizing: border-box;
+}
+
+a {
+  color: var(--link);
+  text-decoration: unset;
+}
+
+a:hover {
+  color: var(--link-light);
+}
+
+body {
+  font-family: "Roboto Slab", "Georgia", Arial, sans-serif;
+  background: var(--primary-bg);
+  color: var(--primary-fg);
+  margin: 0;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--light-highlight);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--light-highlight-fg);
+  border-radius: 2px;
+}
+
+.symbol {
+  filter: invert(0.6);
+  height: 2em;
+}
+
+.symbol:not(.disabled):hover {
+  filter: invert(1);
+}
+
+.symbol.disabled {
+  filter: invert(0.25);
+}
+
+main#content > div {
+  margin: 2em 3em;
+  flex: 1;
+  grid: 1fr / minmax(min-content, 25em) 1fr;
+  gap: 2em;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+#token-form {
+  flex: 1;
+  place-content: center stretch;
+  gap: 2em;
+}
+
+#token-form > label {
+  display: grid;
+  grid: 1fr / max-content 1fr;
+  gap: 1em;
+  place-items: center stretch;
+}
+
+.stretch-left {
+  grid: 1fr / auto-flow 1fr max-content;
+  gap: 0.5em;
+  align-items: center;
+}
+
+#token-form .button {
+  height: fit-content;
+  min-width: fit-content;
+  justify-self: end;
+}
+
+input {
+  padding: 0.5em;
+}
+
+.user-label {
+  border-bottom: 1px solid var(--primary-fg);
+}
+
+.list-item,
+.user-label {
+  grid: 1fr / auto-flow max-content 1fr max-content;
+  gap: 0 1em;
+  margin: 0.5em 0;
+  padding: 1em;
+  align-items: center;
+}
+
+.rs-2 {
+  grid-row: span 2;
+}
+
+.icon {
+  border-radius: 50%;
+  width: 2.5em;
+  height: 2.5em;
+  background: var(--secondary-bg);
+  transition: border-radius 0.5s ease;
+}
+
+.online {
+  position: relative;
+}
+
+.online::after {
+  content: "";
+  background: var(--online);
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: 50%;
+  display: inline-block;
+  float: right;
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  border: 3px solid var(--primary-bg);
+}
+
+.button {
+  padding: 0.8em;
+  border: 0;
+  border-radius: 0.5em;
+  background: var(--secondary-bg);
+  color: var(--secondary-fg);
+}
+
+.button[disabled] {
+  background: var(--disabled-bg);
+  color: var(--disabled-fg);
+}
+
+.button:not([disabled]),
+.selectable:hover {
+  cursor: pointer;
+}
+
+.selected,
+.selectable:hover {
+  border-radius: 0.25em;
+  transition: all 0.5s ease;
+  color: var(--light-highlight-fg);
+  background: var(--light-highlight);
+}
+
+.selectable:hover .icon,
+.selected .icon {
+  border-radius: 25%;
+}
+
+#sound-controller {
+  grid: repeat(3, 3em) / repeat(auto-fill, minmax(3em, 1fr));
+  gap: 0.5em;
+  grid-auto-flow: dense;
+  grid-auto-row: 3em;
+  place-items: stretch;
+}
+
+#sound-controller .symbol {
+  height: 3em;
+}
+
+#file-import {
+  grid-area: span 3 / span 3;
+  position: relative;
+  padding: 1em;
+  border: 1px dashed;
+  border-radius: 0.5em;
+  place-items: end center;
+}
+
+#file-import::after {
+  content: "+";
+  font-size: 4em;
+  font-weight: bold;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+#sound-list {
+  margin-top: 1em;
+  grid: repeat(auto-fit, 4em) / repeat(auto-fill, minmax(10em, 1fr));
+  gap: 1em;
+}
+
+#sound-list:empty::after {
+  content: "No files available";
+}
+
+.sound {
+  border: 1px solid;
+  border-radius: 0.5em;
+  padding: 0.5em;
+  grid: 1.5em 1em / repeat(3, 1em);
+  gap: 0.5em;
+  place-content: center space-between;
+}
+
+.sound .symbol {
+  height: 1em;
+}
+
+.sound > div {
+  grid-column: span 3;
+  place-tems: center start;
+  overflow: auto hidden;
+}
+
+.sound.insert-before {
+  border-left: 1px var(--light-highlight-fg) dashed;
+}
+
+.sound.insert-after {
+  border-right: 1px var(--light-highlight-fg) dashed;
+}
+
+#playing {
+  grid-column: span 3;
+  overflow: auto hidden;
+}
+
+#sound-queue {
+  grid-area: span 3 / span 3;
+  max-height: 10em;
+  overflow: auto;
+}
+
+.queue-item {
+  display: block;
+  white-space: nowrap;
+}
+
+#sound-queue .symbol {
+  height: 1em;
+}

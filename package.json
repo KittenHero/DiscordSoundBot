@@ -1,0 +1,30 @@
+{
+  "name": "DiscordSoundBot",
+  "version": "0.1.0-beta",
+  "description": "A discord bot for playing sounds locally",
+  "main": "src/index.html",
+  "dependencies": {
+    "@discordjs/opus": "^0.1.0",
+    "discord.js": "^12.1.1",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1"
+  },
+  "devDependencies": {
+    "nw": "^0.45.0-sdk",
+    "nw-builder": "^3.5.7",
+    "nw-gyp": "^3.6.5",
+    "prettier": "^2.0.4"
+  },
+  "window": {
+    "title": "Discord Sound Bot",
+    "toolbar": false,
+    "position": "center"
+  },
+  "scripts": {
+    "start": "nw .",
+    "lint": "prettier --write src/",
+    "build": "nwbuild --flavor normal --builddir ./build ."
+  },
+  "author": "KittenHero",
+  "license": "MIT"
+}
