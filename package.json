@@ -1,0 +1,98 @@
+{
+  "name": "DiscordSoundBot",
+  "version": "0.1.0-beta",
+  "description": "A discord bot for playing sounds locally",
+  "productName": "DiscordSoundBot",
+  "main": ".webpack/main",
+  "scripts": {
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "publish": "electron-forge publish",
+    "build": "node build.js",
+    "lint": "prettier --write src/ *.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "music",
+    "sound"
+  ],
+  "author": "KittenHero",
+  "license": "MIT",
+  "config": {
+    "forge": {
+      "packagerConfig": {},
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {
+            "name": "DiscordSoundBot"
+          }
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": [
+            "darwin"
+          ]
+        },
+        {
+          "name": "@electron-forge/maker-deb",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-rpm",
+          "config": {}
+        }
+      ],
+      "plugins": [
+        [
+          "@electron-forge/plugin-webpack",
+          {
+            "mainConfig": "./webpack.main.config.js",
+            "renderer": {
+              "config": "./webpack.renderer.config.js",
+              "entryPoints": [
+                {
+                  "html": "./src/index.html",
+                  "js": "./src/renderer.js",
+                  "name": "main_window"
+                }
+              ]
+            }
+          }
+        ]
+      ]
+    }
+  },
+  "devDependencies": {
+    "@babel/core": "^7.9.0",
+    "@babel/plugin-proposal-optional-catch-binding": "^7.8.3",
+    "@babel/preset-env": "^7.9.5",
+    "@electron-forge/cli": "^6.0.0-beta.50",
+    "@electron-forge/maker-deb": "^6.0.0-beta.50",
+    "@electron-forge/maker-rpm": "^6.0.0-beta.50",
+    "@electron-forge/maker-squirrel": "^6.0.0-beta.50",
+    "@electron-forge/maker-zip": "^6.0.0-beta.50",
+    "@electron-forge/plugin-webpack": "^6.0.0-beta.50",
+    "@marshallofsound/webpack-asset-relocator-loader": "^0.5.0",
+    "babel-loader": "^8.1.0",
+    "babel-plugin-transform-require-default": "^0.1.5",
+    "css-loader": "^3.5.1",
+    "electron": "8.2.1",
+    "node-loader": "^0.6.0",
+    "prettier": "^2.0.4",
+    "style-loader": "^0.23.1",
+    "url-loader": "^4.1.0"
+  },
+  "dependencies": {
+    "@discordjs/opus": "^0.1.0",
+    "discord.js": "^12.1.1",
+    "electron-squirrel-startup": "^1.0.0",
+    "ffmpeg-static": "^4.1.0",
+    "libsodium-wrappers": "^0.7.6",
+    "node-pre-gyp": "^0.14.0",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1"
+  }
+}
