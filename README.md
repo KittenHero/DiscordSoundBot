@@ -1,6 +1,14 @@
 # DiscordSoundBot
 A discord bot for playing sounds locally
 
+## planned features
+- [ ] drop file import
+- [ ] youtube / url import
+- [ ] save file list + bot token
+- [ ] configurable keyboard shortcuts for playing specific file
+- [ ] group / category???
+- [ ] fix logout??
+
 ## build haxx
 
 1. run `node install`
