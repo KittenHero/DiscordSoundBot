@@ -337,11 +337,19 @@ const App = () => {
   const [guilds, setGuilds] = useState(client.voiceGuilds);
   const [selectedGuild, selectGuild] = useState(null);
   const [selectedChannel, selectChannel] = useState(null);
-  const [newUrl, setNewUrl] = useState("");
+
   useEffect(() => {
-    client.on("ready", () => {
-      setGuilds(client.voiceGuilds);
+    const updateGuilds = () => setGuilds(client.voiceGuilds);
+    client.on("ready", updateGuilds);
+    client.on("guildCreate", updateGuilds);
+    client.on("guildDelete", updateGuilds);
+    client.on("channelCreate", updateGuilds);
+    client.on("channelDelete", updateGuilds);
+    client.on("invalidated", () => {
+      alert("Session invalidated");
+      remote.getCurrentWindow().close();
     });
+
     return () => {
       client.destroy();
       client = remote.getGlobal("discordClient");

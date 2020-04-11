@@ -12,7 +12,6 @@ module.exports = {
   module: {
     rules: require("./webpack.rules"),
   },
-  mode: "development",
   optimization: {
     concatenateModules: false,
     minimize: false,

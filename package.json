@@ -1,6 +1,6 @@
 {
   "name": "DiscordSoundBot",
-  "version": "0.1.0-beta-dev",
+  "version": "0.1.0-beta",
   "description": "A discord bot for playing sounds locally",
   "productName": "DiscordSoundBot",
   "main": ".webpack/main",
@@ -10,7 +10,7 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "build": "node build.js",
-    "lint": "prettier --write src/ *.js"
+    "lint": "prettier --write src/ util/ *.js"
   },
   "keywords": [
     "discord",
@@ -93,7 +93,6 @@
     "babel-plugin-transform-require-default": "^0.1.5",
     "css-loader": "^3.5.1",
     "electron": "8.2.1",
-    "node-loader": "^0.6.0",
     "prettier": "^2.0.4",
     "style-loader": "^0.23.1",
     "url-loader": "^4.1.0"

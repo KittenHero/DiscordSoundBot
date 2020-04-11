@@ -1,38 +1,25 @@
+const path = require("path");
+
 module.exports = [
+  /*
   // Add support for native node modules
   {
     test: /\.node$/,
-    use: "node-loader",
+    use: {
+      loader: "node-loader-relative",
+      options: { basePath: path.join(__dirname, ".webpack", "main") },
+    },
   },
+  */
   {
     test: /\.(m?js|node)$/,
     parser: { amd: false },
-    rules: [
-      {
-        use: [
-          {
-            loader: "@marshallofsound/webpack-asset-relocator-loader",
-            options: {
-              outputAssetBase: "native_modules",
-            },
-          },
-        ],
+    use: {
+      loader: "@marshallofsound/webpack-asset-relocator-loader",
+      options: {
+        outputAssetBase: "native_modules",
       },
-      {
-        include: /discord.js|prism-media/,
-        use: [
-          {
-            loader: "babel-loader",
-            options: {
-              plugins: [
-                "@babel/plugin-proposal-optional-catch-binding",
-                "transform-require-default",
-              ],
-            },
-          },
-        ],
-      },
-    ],
+    },
   },
   // Put your webpack loader rules in this array.  This is where you would put
   // your ts-loader configuration for instance:
@@ -50,4 +37,18 @@ module.exports = [
    *   }]
    * }
    */
+  {
+    test: /\.js$/,
+    include: /discord.js|prism-media/,
+    use: {
+      loader: "babel-loader",
+      options: {
+        plugins: [
+          "@babel/plugin-proposal-optional-catch-binding",
+          "transform-require-default",
+          "./util/babel-plugin",
+        ],
+      },
+    },
+  },
 ];
