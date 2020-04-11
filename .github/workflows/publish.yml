@@ -1,0 +1,26 @@
+# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
+# For more information see: https://help.github.com/actions/language-and-framework-guides/publishing-nodejs-packages
+
+name: Windows builds
+
+on:
+  watch:
+    types: [started]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        node: [12]
+    runs-on: ${{ matrix.os }}
+    if: github.actor == github.event.repository.owner.login
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci
+      - run: npm run publish
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
