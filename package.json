@@ -1,6 +1,6 @@
 {
   "name": "DiscordSoundBot",
-  "version": "0.1.0-beta",
+  "version": "0.1.0-beta-dev",
   "description": "A discord bot for playing sounds locally",
   "productName": "DiscordSoundBot",
   "main": ".webpack/main",
