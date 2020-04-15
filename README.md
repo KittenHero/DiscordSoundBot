@@ -1,4 +1,6 @@
 # DiscordSoundBot
+![github publish](https://github.com/KittenHero/DiscordSoundBot/workflows/github%20publish/badge.svg)
+
 A discord bot for playing sounds locally
 
 ## planned features
