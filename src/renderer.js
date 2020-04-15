@@ -26,13 +26,20 @@
  * ```
  */
 
-import { remote, shell } from "electron";
-import { createElement as e, useEffect, useRef, useState } from "react";
+import { remote, shell, ipcRenderer } from "electron";
+import {
+  createElement as e,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import ReactDOM from "react-dom";
 
 import "./index.css";
 import playSVG from "./ionicons/play.svg";
 import pauseSVG from "./ionicons/pause.svg";
+import skipSVG from "./ionicons/play-skip-forward.svg";
 import stopSVG from "./ionicons/stop.svg";
 import repeatSVG from "./ionicons/repeat.svg";
 import repeat1SVG from "./ionicons/repeat-1.svg";
@@ -42,7 +49,278 @@ import createSVG from "./ionicons/create.svg";
 import logoutSVG from "./ionicons/log-out.svg";
 import personAddSVG from "./ionicons/person-add.svg";
 
-let client = remote.getGlobal("discordClient");
+window.client = remote.getGlobal("discordClient");
+const resetClient = () => {
+  window.client.destroy();
+  window.client = remote.getGlobal("discordClient");
+};
+window.onbeforeunload = resetClient;
+
+const useDiscordConnection = (client, config, saveConfig) => {
+  const initialState = {
+    token: config.token || "",
+    connecting: false,
+    selectedGuild: undefined,
+    selectedChannel: undefined,
+    clientUpdated: new Date(),
+    error: undefined,
+  };
+  const reducer = (state, action) => {
+    switch (action.type) {
+      case "set-token":
+        return {
+          ...state,
+          token: action.value,
+        };
+      case "connect":
+        return {
+          ...state,
+          connecting: action.value,
+          error: action.error,
+        };
+      case "select-guild":
+        return {
+          ...state,
+          selectedGuild: action.value,
+          selectedChannel: undefined,
+        };
+      case "select-channel":
+        return {
+          ...state,
+          selectedChannel: action.value,
+          error: action.error,
+        };
+      case "error":
+        return {
+          ...state,
+          error: action.value,
+        };
+      case "update-client":
+        return {
+          ...state,
+          clientUpdated: new Date(),
+        };
+      case "logout":
+        resetClient();
+        return {
+          ...state,
+          clientUpdated: new Date(),
+          selectedGuild: undefined,
+          selectedChannel: undefined,
+        };
+      case "save-config":
+        Object.assign(config, { token: state.token, ...action.value });
+        saveConfig(config);
+      default:
+        return state;
+    }
+  };
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { error, token, connecting, selectedChannel } = state;
+
+  useEffect(() => {
+    if (!error) return;
+    alert(error);
+    dispatch({ type: "error" });
+  }, [error]);
+
+  useEffect(() => {
+    if (!connecting) return;
+    if (!navigator.onLine) {
+      dispatch({
+        type: "connect",
+        value: false,
+        error: "No internet connection.",
+      });
+    } else {
+      client
+        .login(token)
+        .then(() => dispatch({ type: "save-config" }))
+        .catch((e) => e)
+        .then((e) =>
+          dispatch({ type: "connect", value: false, error: e && e.message })
+        );
+    }
+  }, [token, connecting]);
+
+  useEffect(() => {
+    if (!selectedChannel) {
+      if (!client.voice) return;
+      client.voice.connections.each((con) => con.disconnect());
+    } else {
+      selectedChannel
+        .join()
+        .then((con) => {
+          con.on("closing", () => dispatch({ type: "select-channel" }));
+        })
+        .catch((e) => {
+          dispatch({ type: "select-channel", error: e.message });
+        });
+    }
+  }, [selectedChannel]);
+
+  useEffect(() => {
+    const updateClient = () => dispatch({ type: "update-client" });
+    client.on("ready", updateClient);
+    client.on("guildCreate", updateClient);
+    client.on("guildDelete", updateClient);
+    client.on("channelCreate", updateClient);
+    client.on("channelDelete", updateClient);
+    client.on("invalidated", () => {
+      dispatch({ type: "error", error: "Session invalidated" });
+      remote.getCurrentWindow().close();
+    });
+
+    return () => {
+      resetClient();
+      updateClient();
+    };
+  }, []);
+
+  return [state, dispatch];
+};
+
+const useSoundController = (client, channel, config, saveConfig) => {
+  const initialState = {
+    sounds: config.sounds || [],
+    soundQueue: [],
+    playing: null,
+    lastPlayed: null,
+    paused: false,
+    loop: 0,
+  };
+  const reducer = (state, action) => {
+    switch (action.type) {
+      case "add-sounds":
+        return {
+          ...state,
+          sounds: state.sounds.concat(
+            action.value.filter(
+              (f) => !state.sounds.some((g) => f.path === g.path)
+            )
+          ),
+        };
+      case "remove-sound":
+        return {
+          ...state,
+          sounds: state.sounds.filter((f) => f !== action.value),
+        };
+      case "reorder-sound":
+        const sounds = state.sounds.slice();
+        const [from, to] = action.value;
+        sounds.splice(to, 0, sounds.splice(from, 1)[0]);
+        return { ...state, sounds };
+      case "toggle-loop":
+        return {
+          ...state,
+          loop: (state.loop + 1) % 3,
+        };
+      case "playing":
+        const stream = action.value;
+        const { soundQueue, loop, lastPlayed } = state;
+        const playing = stream && { stream, source: soundQueue[0] };
+        return {
+          ...state,
+          playing,
+          // clears last played when queue is done
+          lastPlayed:
+            !soundQueue.length && !loop ? playing : playing || lastPlayed,
+          soundQueue: playing
+            ? soundQueue.slice(1)
+            : loop == 0
+            ? soundQueue
+            : loop == 1
+            ? soundQueue.concat([lastPlayed.source])
+            : [lastPlayed.source].concat(soundQueue),
+        };
+      case "queue-sound":
+        return {
+          ...state,
+          soundQueue: [...state.soundQueue, action.value],
+        };
+      case "unqueue-sound":
+        return {
+          ...state,
+          soundQueue: state.soundQueue.filter((_, i) => i !== action.value),
+        };
+      case "toggle-pause":
+        return {
+          ...state,
+          paused: !state.paused,
+        };
+      case "play-sound":
+        if (state.lastPlayed) state.lastPlayed.stream.destroy();
+        return {
+          ...state,
+          playing: null,
+          lastPlayed: null,
+          soundQueue: [action.value],
+        };
+      case "skip": {
+        const { lastPlayed, soundQueue, loop } = state;
+        if (lastPlayed) lastPlayed.stream.destroy();
+        return {
+          ...state,
+          lastPlayed: null,
+          paused: false,
+          playing: null,
+          soundQueue:
+            loop == 1 && lastPlayed
+              ? soundQueue.concat([lastPlayed.source])
+              : soundQueue,
+        };
+      }
+      case "stop":
+        if (state.lastPlayed) state.lastPlayed.stream.destroy();
+        return {
+          ...state,
+          playing: null,
+          lastPlayed: null,
+          soundQueue: [],
+        };
+      default:
+        return state;
+    }
+  };
+
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { sounds, soundQueue, playing, paused } = state;
+
+  useEffect(
+    () =>
+      saveConfig({
+        sounds: sounds.map((f) => ({ path: f.path, name: f.name })),
+      }),
+    [sounds]
+  );
+
+  useEffect(() => {
+    if (!playing) return;
+    if (paused) {
+      playing.stream.pause();
+    } else if (playing.stream.paused) {
+      playing.stream.resume();
+    }
+  }, [playing, paused]);
+
+  useEffect(() => {
+    if (!channel) {
+      if (playing || soundQueue.length) {
+        dispatch({ type: "stop" });
+      }
+      return;
+    }
+    if (!soundQueue.length || playing) return;
+
+    client.voice.connections.each((con) => {
+      const stream = con.play(soundQueue[0].path);
+      dispatch({ type: "playing", value: stream });
+      stream.on("finish", () => dispatch({ type: "playing" }));
+    });
+  }, [channel, soundQueue, playing]);
+
+  return [state, dispatch];
+};
 
 const Sound = ({ sound, queueSound, playSound, deleteSound, ...rest }) => {
   return e(
@@ -53,88 +331,31 @@ const Sound = ({ sound, queueSound, playSound, deleteSound, ...rest }) => {
       className: `symbol ${playSound ? "selectable" : "disabled"}`,
       title: "play",
       src: playSVG,
-      onClick: () => playSound(sound),
+      onClick: playSound,
     }),
     e("img", {
       className: `symbol ${queueSound ? "selectable" : "disabled"}`,
       title: "add to queue",
       src: listSVG,
-      onClick: () => queueSound(sound),
+      onClick: queueSound,
     }),
     e("img", {
       className: "symbol selectable",
       title: "remove",
       src: trashSVG,
-      onClick: () => deleteSound(sound),
+      onClick: deleteSound,
     })
   );
 };
 
-let draggedOver, lastPlayed;
+let draggedOver;
+const Player = ({ client, channel, config, saveConfig }) => {
+  const [
+    { loop, playing, paused, sounds, soundQueue },
+    dispatch,
+  ] = useSoundController(client, channel, config, saveConfig);
 
-const Player = ({ client, channel }) => {
-  const [currentFiles, setFiles] = useState([]);
-  const [soundQueue, setQueue] = useState([]);
-  const [playing, setPlaying] = useState(null);
-  const [paused, setPause] = useState(false);
-  const [loop, setLoop] = useState(0);
   const inputRef = useRef(null);
-  const deleteSound = (f) => setFiles((files) => files.filter((g) => f !== g));
-  const queueSound = channel && ((s) => setQueue((sq) => sq.concat([s])));
-  const playSound =
-    channel &&
-    ((s) => {
-      setPlaying(null);
-      setQueue([s]);
-    });
-
-  useEffect(() => {
-    if (!channel) {
-      if (soundQueue.length) {
-        setQueue([]);
-      }
-      if (playing) {
-        playing.stream.destroy();
-        setPlaying(null);
-      }
-      return;
-    }
-    if (!soundQueue.length || playing) return;
-
-    const next = loop == 1 ? lastPlayed : soundQueue[0];
-
-    client.voice.connections.each((con) => {
-      const stream = con.play(next.path);
-      lastPlayed = next;
-      setPlaying({ stream, name: next.name, path: next.path });
-      stream.on("finish", () => setPlaying(null));
-    });
-    setQueue((q) =>
-      loop == 0 ? q.slice(1) : loop == 1 ? q.slice(1).concat([next]) : q
-    );
-  }, [channel, soundQueue, playing]);
-
-  const addFilesDrop = (ev) => {
-    ev.preventDefault();
-    const items = new Array(...ev.dataTransfer.items);
-    setFiles((files) =>
-      files.concat(
-        items
-          .filter((i) => i.kind === "file")
-          .map((i = i.getAsFile()))
-          .filter(files.every((g) => g.path !== f.path))
-      )
-    );
-  };
-  const addFilesInput = (ev) => {
-    const newFiles = new Array(...ev.target.files);
-    setFiles((files) =>
-      files.concat(
-        newFiles.filter((f) => files.every((g) => g.path !== f.path))
-      )
-    );
-  };
-
   return e(
     "div",
     { className: "flex-column" },
@@ -146,9 +367,34 @@ const Player = ({ client, channel }) => {
         {
           id: "file-import",
           className: "selectable",
-          onDrop: addFilesDrop,
+          onDragOver: (ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+          },
+          onDrop: (ev) => {
+            ev.preventDefault();
+            dispatch({
+              type: "add-sounds",
+              value: new Array(...ev.dataTransfer.items)
+                .filter((i) => i.kind === "file" && /audio\/.*/.test(i.type))
+                .map((i) => i.getAsFile()),
+            });
+          },
           onClick: () => inputRef.current.click(),
         },
+        e("input", {
+          ref: inputRef,
+          type: "file",
+          accept: "audio/*",
+          value: "",
+          multiple: true,
+          hidden: true,
+          onChange: (ev) =>
+            dispatch({
+              type: "add-sounds",
+              value: new Array(...ev.target.files),
+            }),
+        }),
         "import sounds"
       ),
       !playing &&
@@ -158,44 +404,30 @@ const Player = ({ client, channel }) => {
           src: playSVG,
         }),
       playing &&
-        paused &&
         e("img", {
           className: "symbol selectable",
-          title: "play",
-          src: playSVG,
-          onClick: () => {
-            playing.stream.resume();
-            setPause(false);
-          },
-        }),
-      playing &&
-        !paused &&
-        e("img", {
-          className: "symbol selectable",
-          title: "pause",
-          src: pauseSVG,
-          onClick: () => {
-            setPause(true);
-            playing.stream.pause();
-          },
+          title: paused ? "play" : "pause",
+          src: paused ? playSVG : pauseSVG,
+          onClick: () => dispatch({ type: "toggle-pause" }),
         }),
       e("img", {
         className: `symbol ${playing ? "selectable" : "disabled"}`,
+        title: "skip",
+        src: skipSVG,
+        onClick: () => dispatch({ type: "skip" }),
+      }),
+      e("img", {
+        className: `symbol ${playing ? "selectable" : "disabled"}`,
         title: "stop",
+        disabled: !playing,
         src: stopSVG,
-        onClick: () => {
-          setQueue([]);
-          if (playing) {
-            playing.stream.destroy();
-          }
-          setPlaying(null);
-        },
+        onClick: () => dispatch({ type: "stop" }),
       }),
       e("img", {
         className: `symbol ${loop ? "selectable" : "disabled"}`,
         title: ["loop off", "loop queue", "loop song"][loop],
         src: loop < 2 ? repeatSVG : repeat1SVG,
-        onClick: () => setLoop((l) => (l + 1) % 3),
+        onClick: () => dispatch({ type: "toggle-loop" }),
       }),
       e(
         "div",
@@ -208,36 +440,31 @@ const Player = ({ client, channel }) => {
             e("img", {
               className: "symbol selectable",
               src: trashSVG,
-              onClick: () => {
-                setQueue((sq) => sq.filter((_, j) => j !== i));
-              },
+              onClick: () => dispatch({ type: "unqueue-sound", value: i }),
             })
           )
         )
       ),
-      e("div", { id: "playing" }, playing && `playing: ${playing.name}`)
+      e(
+        "div",
+        { id: "playing" },
+        playing && e("span", null, `playing: ${playing.source.name}`)
+      )
     ),
-    e("input", {
-      ref: inputRef,
-      type: "file",
-      accept: "audio/*",
-      value: "",
-      multiple: true,
-      hidden: true,
-      onChange: addFilesInput,
-    }),
     e(
       "div",
       {
         id: "sound-list",
       },
-      currentFiles.map((f, i) =>
+      sounds.map((f, i) =>
         e(Sound, {
           key: f.path,
           sound: f,
-          deleteSound,
-          queueSound,
-          playSound,
+          deleteSound: () => dispatch({ type: "remove-sound", value: f }),
+          queueSound:
+            channel && (() => dispatch({ type: "queue-sound", value: f })),
+          playSound:
+            channel && (() => dispatch({ type: "play-sound", value: f })),
           "data-id": i,
           draggable: true,
           onDragStart: (e) => {
@@ -248,9 +475,7 @@ const Player = ({ client, channel }) => {
             let to = +draggedOver.dataset.id;
             if (i < to) --to;
             if (draggedOver.classList.contains("insert-after")) ++to;
-            const files = currentFiles.slice();
-            files.splice(to, 0, files.splice(i, 1)[0]);
-            setFiles(files);
+            dispatch({ type: "reorder-sounds", value: [i, to] });
             draggedOver.classList.toggle("insert-before", false);
             draggedOver.classList.toggle("insert-after", false);
           },
@@ -275,13 +500,7 @@ const Player = ({ client, channel }) => {
   );
 };
 
-window.onbeforeunload = () => {
-  client.destroy();
-  client = remote.getGlobal("dicordClient");
-};
-
-const Bot = ({ client, logout }) => {
-  const [loopOn, setLoop] = useState(false);
+const BotUser = ({ client, logout }) => {
   const [invite, setInvite] = useState("");
   useEffect(() => {
     client
@@ -309,15 +528,13 @@ const Bot = ({ client, logout }) => {
         src: personAddSVG,
         title: "add me to your server",
         onClick: () => shell.openExternal(invite),
-      })
-    /*
+      }),
     e("img", {
       className: "symbol rs-2 selectable",
       src: logoutSVG,
       title: "log out",
       onClick: logout,
     })
-    */
   );
 };
 
@@ -331,58 +548,17 @@ const Guild = ({ guild, className, children, ...rest }) => {
   );
 };
 
-const App = () => {
-  const [token, setToken] = useState("");
-  const [connecting, setConnecting] = useState(false);
-  const [guilds, setGuilds] = useState(client.voiceGuilds);
-  const [selectedGuild, selectGuild] = useState(null);
-  const [selectedChannel, selectChannel] = useState(null);
+const App = ({ config, saveConfig }) => {
+  const client = window.client;
+  const [
+    { token, connecting, selectedGuild, selectedChannel },
+    dispatch,
+  ] = useDiscordConnection(client, config, saveConfig);
 
-  useEffect(() => {
-    const updateGuilds = () => setGuilds(client.voiceGuilds);
-    client.on("ready", updateGuilds);
-    client.on("guildCreate", updateGuilds);
-    client.on("guildDelete", updateGuilds);
-    client.on("channelCreate", updateGuilds);
-    client.on("channelDelete", updateGuilds);
-    client.on("invalidated", () => {
-      alert("Session invalidated");
-      remote.getCurrentWindow().close();
-    });
-
-    return () => {
-      client.destroy();
-      client = remote.getGlobal("discordClient");
-    };
-  }, [client]);
-  useEffect(() => {
-    if (!selectedChannel) {
-      if (!client.voice) return;
-      client.voice.connections.each((con) => con.disconnect());
-    } else {
-      selectedChannel
-        .join()
-        .then((con) => {
-          con.on("closing", () => selectChannel(null));
-        })
-        .catch((e) => {
-          selectChannel(null);
-          alert(e.message);
-        });
-    }
-  }, [selectedChannel]);
-
-  const userComponent = client.user
-    ? e(Bot, {
+  const userComponent = client.readyAt
+    ? e(BotUser, {
         client: client,
-        logout: () => {
-          client.destroy();
-          client = remote.getGlobal("discordClient");
-          window.client = client;
-          setGuilds([]);
-          selectGuild(null);
-          selectChannel(null);
-        },
+        logout: () => dispatch({ type: "logout" }),
       })
     : e(
         "div",
@@ -393,7 +569,8 @@ const App = () => {
           "Bot Token:",
           e("input", {
             value: token,
-            onChange: (e) => setToken(e.target.value),
+            onChange: (e) =>
+              dispatch({ type: "set-token", value: e.target.value }),
             type: "text",
           })
         ),
@@ -407,24 +584,14 @@ const App = () => {
               shell.openExternal(
                 "https://discordapp.com/developers/docs/intro#bots-and-apps"
               ),
-            title: "create a new bot",
+            title: "Create a new bot",
           }),
           e(
             "button",
             {
               className: "button",
               disabled: connecting,
-              onClick: () => {
-                if (!navigator.onLine) {
-                  alert("No internet connection.");
-                  return;
-                }
-                setConnecting(true);
-                client
-                  .login(token)
-                  .catch((e) => alert(e.message))
-                  .finally(() => setConnecting(false));
-              },
+              onClick: () => dispatch({ type: "connect", value: true }),
             },
             "connect"
           )
@@ -434,20 +601,17 @@ const App = () => {
     ? e(Guild, {
         guild: selectedGuild,
         className: "selected",
-        onClick: () => {
-          selectGuild(null);
-          selectChannel(null);
-        },
+        onClick: () => dispatch({ type: "select-guild" }),
       })
-    : client.user &&
+    : client.readyAt &&
       e(
         "div",
         { id: "select-guild" },
-        guilds.map((g) =>
+        client.voiceGuilds.map((g) =>
           e(Guild, {
             guild: g,
             key: g.name,
-            onClick: () => selectGuild(g),
+            onClick: () => dispatch({ type: "select-guild", value: g }),
             className: "selectable",
           })
         )
@@ -455,7 +619,10 @@ const App = () => {
   const channelComponent = selectedChannel
     ? e(
         "div",
-        { className: "selected online", onClick: () => selectChannel(null) },
+        {
+          className: "selected online",
+          onClick: () => dispatch({ type: "select-channel" }),
+        },
         selectedChannel.name
       )
     : selectedGuild &&
@@ -468,7 +635,7 @@ const App = () => {
             {
               className: "selectable",
               key: ch.name,
-              onClick: () => selectChannel(ch),
+              onClick: () => dispatch({ type: "select-channel", value: ch }),
             },
             ch.name
           )
@@ -485,8 +652,22 @@ const App = () => {
       guildComponent,
       channelComponent
     ),
-    e(Player, { client, channel: selectedChannel })
+    e(Player, {
+      client,
+      channel: selectedChannel,
+      config,
+      saveConfig: (value) => dispatch({ type: "save-config", value }),
+    })
   );
 };
 
-ReactDOM.render(e(App), document.getElementById("app"));
+(async () => {
+  const config = await ipcRenderer.invoke("read-config");
+  ReactDOM.render(
+    e(App, {
+      config,
+      saveConfig: (c) => ipcRenderer.invoke("save-config", c),
+    }),
+    document.getElementById("app")
+  );
+})();

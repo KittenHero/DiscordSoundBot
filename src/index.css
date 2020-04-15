@@ -72,10 +72,20 @@ body {
 }
 
 main#app > div {
-  margin: 2em 3em;
-  flex: 1;
-  grid: 1fr / minmax(min-content, 25em) 1fr;
-  gap: 2em;
+  margin: 1em 1em;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+main#app > div > :first-child {
+  min-width: min-content;
+  flex-grow: 1;
+  margin: 1em;
+}
+
+main#app > div > :nth-child(2) {
+  flex-grow: 99;
+  margin: 1em;
 }
 
 .flex-column {
@@ -187,18 +197,14 @@ input {
 }
 
 #sound-controller {
-  grid: repeat(3, 3em) / repeat(auto-fill, minmax(3em, 1fr));
-  gap: 0.5em;
+  grid: repeat(4, 2.3125em) / repeat(auto-fill, minmax(2.3125em, 1fr));
+  gap: 0.25em;
   grid-auto-flow: dense;
   place-items: stretch;
 }
 
-#sound-controller .symbol {
-  height: 3em;
-}
-
 #file-import {
-  grid-area: span 3 / span 3;
+  grid-area: span 4 / span 4;
   position: relative;
   padding: 1em;
   border: 1px dashed;
@@ -214,6 +220,32 @@ input {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+#sound-controller .symbol {
+  height: 2em;
+}
+
+#playing {
+  grid-column: span 4;
+  overflow: auto hidden;
+  white-space: nowrap;
+}
+
+#sound-queue {
+  grid-area: span 4 / span 4;
+  max-height: 10em;
+  overflow: auto;
+  place-content: flex-start;
+}
+
+.queue-item {
+  display: block;
+  white-space: nowrap;
+}
+
+#sound-queue .symbol {
+  height: 1em;
 }
 
 #sound-list {
@@ -243,6 +275,7 @@ input {
   grid-column: span 3;
   place-items: center start;
   overflow: auto hidden;
+  white-space: nowrap;
 }
 
 .sound.insert-before {
@@ -251,24 +284,4 @@ input {
 
 .sound.insert-after {
   border-right: 1px var(--light-highlight-fg) dashed;
-}
-
-#playing {
-  grid-column: span 3;
-  overflow: auto hidden;
-}
-
-#sound-queue {
-  grid-area: span 3 / span 3;
-  max-height: 10em;
-  overflow: auto;
-}
-
-.queue-item {
-  display: block;
-  white-space: nowrap;
-}
-
-#sound-queue .symbol {
-  height: 1em;
 }

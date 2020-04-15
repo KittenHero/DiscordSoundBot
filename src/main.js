@@ -1,4 +1,7 @@
-const { app, BrowserWindow, globalShortcut } = require("electron");
+const fs = require("fs").promises;
+const path = require("path");
+const { app, BrowserWindow, ipcMain } = require("electron");
+const Discord = require("discord.js");
 
 const prod = process.env.NODE_ENV === "production";
 
@@ -25,14 +28,6 @@ const createWindow = () => {
   mainWindow.webContents.on("will-navigate", (e) => e.prevenetDefault());
   if (!prod) {
     mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.on("focus", () => {
-      globalShortcut.registerAll(["CommandOrControl+R", "F5"], () => {});
-    });
-
-    mainWindow.on("blur", () => {
-      globalShortcut.unregisterAll();
-    });
   }
 };
 
@@ -60,7 +55,6 @@ app.on("activate", () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
-const Discord = require("discord.js");
 
 class IPCClient extends Discord.Client {
   get voiceGuilds() {
@@ -82,3 +76,15 @@ class IPCClient extends Discord.Client {
 }
 
 global.discordClient = new IPCClient();
+const configPath = path.join(app.getAppPath(), "config.json");
+
+ipcMain.handle("read-config", (_event) => {
+  return fs
+    .readFile(configPath)
+    .then((data) => JSON.parse(data))
+    .catch(() => ({}));
+});
+
+ipcMain.handle("save-config", (_event, config) => {
+  fs.writeFile(configPath, JSON.stringify(config, null, 2));
+});

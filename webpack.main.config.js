@@ -14,12 +14,10 @@ module.exports = {
   },
   optimization: {
     concatenateModules: false,
-    minimize: false,
+    minimize: true,
     minimizer: [
       new TerserPlugin({
         terserOptions: {
-          mangle: { keep_classnames: true },
-          compress: { keep_classnames: true },
           keep_classnames: true,
         },
       }),
