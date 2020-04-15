@@ -1,6 +1,12 @@
 const fs = require("fs").promises;
 const path = require("path");
-const { app, BrowserWindow, ipcMain } = require("electron");
+const {
+  app,
+  autoUpdater,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+} = require("electron");
 const Discord = require("discord.js");
 
 const prod = process.env.NODE_ENV === "production";
@@ -88,3 +94,33 @@ ipcMain.handle("read-config", (_event) => {
 ipcMain.handle("save-config", (_event, config) => {
   fs.writeFile(configPath, JSON.stringify(config, null, 2));
 });
+
+(async () => {
+  if (!prod || !app.isPackaged || process.platform !== "win32") return;
+
+  const rawpkg = await fs.readFile(path.join(app.getAppPath(), "package.json"));
+  const pkg = JSON.parse(rawpkg);
+  autoUpdater.setFeedURL({
+    url: `https://update.electronjs.org/${pkg.repository.owner}/${
+      pkg.repository.name
+    }/${process.platform}-${process.arch}/${app.getVersion()}`,
+  });
+
+  autoUpdater.on("update-downloaded", (_event, releaseNotes) => {
+    const message = {
+      type: "info",
+      buttons: ["Restart", "Later"],
+      title: "Application Update",
+      message: releaseNotes,
+      detail:
+        "A new version has been downloaded. Restart the application to apply the updates.",
+    };
+
+    dialog.showMessageBox(message, (response) => {
+      if (response === 0) autoUpdater.quitAndInstall();
+    });
+  });
+
+  autoUpdater.checkForUpdates();
+  setInterval(() => autoUpdater.checkForUpdates(), 1000 * 60 * 10);
+})();
