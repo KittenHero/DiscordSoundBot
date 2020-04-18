@@ -205,7 +205,7 @@ const useSoundController = (client, channel, config, saveConfig) => {
           ...state,
           sounds: state.sounds.filter((f) => f !== action.value),
         };
-      case "reorder-sound":
+      case "reorder-sounds":
         const sounds = state.sounds.slice();
         const [from, to] = action.value;
         sounds.splice(to, 0, sounds.splice(from, 1)[0]);
