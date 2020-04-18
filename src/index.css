@@ -126,6 +126,21 @@ input {
   border-bottom: 1px solid var(--primary-fg);
 }
 
+#select-guild::before {
+  font-size: larger;
+  font-weight: bold;
+  justify-self: center;
+  margin-top: 0.5em;
+}
+
+#select-guild:empty::before {
+  content: "Add me to a server";
+}
+
+#select-guild:not(:empty)::before {
+  content: "Connect to a channel";
+}
+
 .list-item,
 .user-label {
   grid: 1fr / auto-flow max-content 1fr max-content;
