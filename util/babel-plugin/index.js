@@ -1,3 +1,9 @@
+/**
+ * transforms ambiguous require calls (i.e, non-static string)
+ * into import calls so webpack can resolve modules
+ * should be used in conjunction with
+ * webpack.ContextReplacementPlugin
+ **/
 module.exports = (babel, options) => {
   const { types: t, template } = babel;
   options = options || {};
