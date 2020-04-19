@@ -5,6 +5,7 @@ const {
   autoUpdater,
   BrowserWindow,
   dialog,
+  globalShortcut,
   ipcMain,
 } = require("electron");
 const Discord = require("discord.js");
@@ -52,6 +53,15 @@ const createWindow = () => {
 
   ipcMain.handle("save-config", (_event, config) => {
     fs.writeFile(configPath, JSON.stringify(config, null, 2));
+  });
+
+  ipcMain.handle("unregister-shortcuts", () => globalShortcut.unregisterAll());
+  ipcMain.handle("register-shortcuts", (_event, shortcuts) => {
+    shortcuts.forEach((s) =>
+      globalShortcut.register(s.key, () => {
+        mainWindow.webContents.send("shortcut-triggered", s);
+      })
+    );
   });
 };
 

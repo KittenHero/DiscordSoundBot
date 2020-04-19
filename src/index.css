@@ -6,6 +6,8 @@
   --online: green;
   --light-highlight: #fff3;
   --light-highlight-fg: #fff;
+  --form-bg: #fff;
+  --modal-bg: #000a;
   --disabled-bg: #999;
   --disabled-fg: #fff;
   --link: #0077cc;
@@ -265,7 +267,7 @@ input {
 
 #track-list {
   margin-top: 1em;
-  grid: repeat(auto-fit, 4em) / repeat(auto-fill, minmax(10em, 1fr));
+  grid: repeat(auto-fit, 6em) / repeat(auto-fill, minmax(10em, 1fr));
   gap: 1em;
 }
 
@@ -277,7 +279,7 @@ input {
   border: 1px solid;
   border-radius: 0.5em;
   padding: 0.5em;
-  grid: 1.5em 1em / repeat(3, 1em);
+  grid: 2em repeat(2, 1em) / repeat(4, 1em);
   gap: 0.5em;
   place-content: center space-between;
 }
@@ -286,8 +288,8 @@ input {
   height: 1em;
 }
 
-.sound > div {
-  grid-column: span 3;
+.track > div {
+  grid-column: span 4;
   place-items: center start;
   overflow: auto hidden;
   white-space: nowrap;
@@ -299,4 +301,31 @@ input {
 
 .track.insert-after {
   border-right: 1px var(--light-highlight-fg) dashed;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  background: var(--modal-bg);
+  place-content: center;
+  grid-auto-flow: column;
+  gap: 1em 0.5em;
+}
+
+.modal::after {
+  position: fixed;
+  top: 0;
+  right: 0;
+  margin: 1em;
+  content: "close";
+  color: var(--secondary-fg);
+  cursor: pointer;
+}
+
+select {
+  background: var(--form-bg);
 }

@@ -44,6 +44,7 @@ import stopSVG from "./ionicons/stop.svg";
 import repeatSVG from "./ionicons/repeat.svg";
 import repeat1SVG from "./ionicons/repeat-1.svg";
 import listSVG from "./ionicons/list.svg";
+import settingsSVG from "./ionicons/settings.svg";
 import trashSVG from "./ionicons/trash.svg";
 import createSVG from "./ionicons/create.svg";
 import logoutSVG from "./ionicons/log-out.svg";
@@ -151,7 +152,9 @@ const useDiscordConnection = (client, config, saveConfig) => {
       selectedChannel
         .join()
         .then((con) => {
-          con.on("closing", () => dispatch({ type: "select-channel" }));
+          const resetChannel = () => dispatch({ type: "select-channel" })
+          con.on("disconnect", resetChannel);
+          con.on("closing", resetChannel);
         })
         .catch((e) => {
           dispatch({ type: "select-channel", error: e.message });
@@ -188,6 +191,7 @@ const useTrackController = (client, channel, config, saveConfig) => {
     lastPlayed: null,
     paused: false,
     loop: 0,
+    shortcutModal: undefined,
   };
   const reducer = (state, action) => {
     switch (action.type) {
@@ -278,13 +282,41 @@ const useTrackController = (client, channel, config, saveConfig) => {
           lastPlayed: null,
           trackQueue: [],
         };
+      case "configure-shortcuts": {
+        const { track, key } = action.value || {};
+        const keyValid =
+          key &&
+          !/^(?:(?:Super|Alt|Shift|Control|Already used)\+?)+$/.test(key);
+        const tracks =
+          track && keyValid
+            ? state.tracks.map((t) =>
+                t.path == track ? { path: t.path, name: t.name, key } : t
+              )
+            : state.tracks;
+        return { ...state, tracks, shortcutModal: action.value };
+      }
       default:
         return state;
     }
   };
 
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { tracks, trackQueue, playing, paused } = state;
+  const { tracks, trackQueue, playing, paused, shortcutModal } = state;
+
+  useEffect(() => {
+    if (shortcutModal)
+      return ipcRenderer.invoke("unregister-shortcuts") && undefined;
+
+    ipcRenderer.invoke(
+      "register-shortcuts",
+      tracks.filter((f) => f.key)
+    );
+    const shortcutHandler = (_event, value) =>
+      dispatch({ type: "play-track", value });
+    ipcRenderer.on("shortcut-triggered", shortcutHandler);
+    return () =>
+      ipcRenderer.removeListener("shortcut-triggered", shortcutHandler);
+  }, [shortcutModal]);
 
   useEffect(
     () =>
@@ -365,7 +397,7 @@ const Track = ({
 let draggedOver;
 const Player = ({ client, channel, config, saveConfig }) => {
   const [
-    { loop, playing, paused, tracks, trackQueue },
+    { loop, playing, paused, tracks, trackQueue, shortcutModal },
     dispatch,
   ] = useTrackController(client, channel, config, saveConfig);
 
@@ -515,7 +547,75 @@ const Player = ({ client, channel, config, saveConfig }) => {
           },
         })
       )
-    )
+    ),
+    shortcutModal &&
+      e(
+        "div",
+        {
+          className: "modal",
+          id: "shortcut-modal",
+          onClick: (e) =>
+            e.target === e.currentTarget &&
+            dispatch({ type: "configure-shortcuts" }),
+        },
+        e(
+          "select",
+          {
+            value: shortcutModal.track,
+            onChange: (e) =>
+              dispatch({
+                type: "configure-shortcuts",
+                value: tracks
+                  .filter((f) => f.path === e.target.value)
+                  .map((f) => ({ track: f.path, key: f.key }))[0],
+              }),
+          },
+          tracks.map((f) => e("option", { value: f.path, key: f.path }, f.name))
+        ),
+        e("input", {
+          type: "text",
+          placeholder: "enter shortcut",
+          value: shortcutModal.key || "",
+          onChange: () => {},
+          onKeyDown: (e) => {
+            if (e.key === "Enter")
+              return dispatch({ type: "configure-shortcuts" });
+            if (/Esc|Media|Audio|Microphone|Channel/.test(e.key)) return;
+            e.preventDefault();
+            // TODO: test in macOS
+            const mods = [
+              e.ctrlKey && "Control",
+              e.shiftKey && "Shift",
+              e.altKey && "Alt",
+              e.metaKey && "Super",
+            ].filter((e) => e);
+            const numkeys = {
+              "+": "numadd",
+              "-": "numsub",
+              "*": "nummul",
+              "/": "numdiv",
+              ".": "numdec",
+            };
+            const keyNames = { "+": "plus", " ": "Space", Meta: "Super" };
+            const key =
+              e.location === 3
+                ? numkeys[e.key] || `num${e.key}`
+                : keyNames[e.key] || e.key;
+            if (!mods.includes(key)) mods.push(key);
+            const fullKey = mods.join("+");
+            const used = tracks.some(
+              (f) => f.key === fullKey && f.path != shortcutModal.track
+            );
+            dispatch({
+              type: "configure-shortcuts",
+              value: {
+                ...shortcutModal,
+                key: used ? "Already used" : fullKey,
+              },
+            });
+          },
+        })
+      )
   );
 };
 
