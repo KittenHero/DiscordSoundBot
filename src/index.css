@@ -247,7 +247,7 @@ input {
   white-space: nowrap;
 }
 
-#sound-queue {
+#track-queue {
   grid-area: span 4 / span 4;
   max-height: 10em;
   overflow: auto;
@@ -259,21 +259,21 @@ input {
   white-space: nowrap;
 }
 
-#sound-queue .symbol {
+#track-queue .symbol {
   height: 1em;
 }
 
-#sound-list {
+#track-list {
   margin-top: 1em;
   grid: repeat(auto-fit, 4em) / repeat(auto-fill, minmax(10em, 1fr));
   gap: 1em;
 }
 
-#sound-list:empty::after {
+#track-list:empty::after {
   content: "No files available";
 }
 
-.sound {
+.track {
   border: 1px solid;
   border-radius: 0.5em;
   padding: 0.5em;
@@ -282,7 +282,7 @@ input {
   place-content: center space-between;
 }
 
-.sound .symbol {
+.track .symbol {
   height: 1em;
 }
 
@@ -293,10 +293,10 @@ input {
   white-space: nowrap;
 }
 
-.sound.insert-before {
+.track.insert-before {
   border-left: 1px var(--light-highlight-fg) dashed;
 }
 
-.sound.insert-after {
+.track.insert-after {
   border-right: 1px var(--light-highlight-fg) dashed;
 }

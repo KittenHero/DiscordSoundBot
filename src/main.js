@@ -31,10 +31,28 @@ const createWindow = () => {
   // and load the index.html of the app.
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
   mainWindow.removeMenu();
-  mainWindow.webContents.on("will-navigate", (e) => e.prevenetDefault());
+  mainWindow.webContents.on("will-navigate", (e) => e.preventDefault());
   if (!prod) {
     mainWindow.webContents.openDevTools();
   }
+  const configPath = path.join(app.getAppPath(), "config.json");
+
+  ipcMain.handle("read-config", async (_event) => {
+    const config = await fs
+      .readFile(configPath)
+      .then((data) => JSON.parse(data))
+      .catch(() => ({}));
+    // legacy format
+    if (config.sounds) {
+      config.tracks = config.sounds;
+      delete config.sounds;
+    }
+    return config;
+  });
+
+  ipcMain.handle("save-config", (_event, config) => {
+    fs.writeFile(configPath, JSON.stringify(config, null, 2));
+  });
 };
 
 // This method will be called when Electron has finished
@@ -82,18 +100,6 @@ class IPCClient extends Discord.Client {
 }
 
 global.discordClient = new IPCClient();
-const configPath = path.join(app.getAppPath(), "config.json");
-
-ipcMain.handle("read-config", (_event) => {
-  return fs
-    .readFile(configPath)
-    .then((data) => JSON.parse(data))
-    .catch(() => ({}));
-});
-
-ipcMain.handle("save-config", (_event, config) => {
-  fs.writeFile(configPath, JSON.stringify(config, null, 2));
-});
 
 (async () => {
   if (!prod || !app.isPackaged || process.platform !== "win32") return;

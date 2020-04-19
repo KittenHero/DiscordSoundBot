@@ -180,10 +180,10 @@ const useDiscordConnection = (client, config, saveConfig) => {
   return [state, dispatch];
 };
 
-const useSoundController = (client, channel, config, saveConfig) => {
+const useTrackController = (client, channel, config, saveConfig) => {
   const initialState = {
-    sounds: config.sounds || [],
-    soundQueue: [],
+    tracks: config.tracks || [],
+    trackQueue: [],
     playing: null,
     lastPlayed: null,
     paused: false,
@@ -191,25 +191,25 @@ const useSoundController = (client, channel, config, saveConfig) => {
   };
   const reducer = (state, action) => {
     switch (action.type) {
-      case "add-sounds":
+      case "add-tracks":
         return {
           ...state,
-          sounds: state.sounds.concat(
+          tracks: state.tracks.concat(
             action.value.filter(
-              (f) => !state.sounds.some((g) => f.path === g.path)
+              (f) => !state.tracks.some((g) => f.path === g.path)
             )
           ),
         };
-      case "remove-sound":
+      case "remove-track":
         return {
           ...state,
-          sounds: state.sounds.filter((f) => f !== action.value),
+          tracks: state.tracks.filter((f) => f !== action.value),
         };
-      case "reorder-sounds":
-        const sounds = state.sounds.slice();
+      case "reorder-tracks":
+        const tracks = state.tracks.slice();
         const [from, to] = action.value;
-        sounds.splice(to, 0, sounds.splice(from, 1)[0]);
-        return { ...state, sounds };
+        tracks.splice(to, 0, tracks.splice(from, 1)[0]);
+        return { ...state, tracks };
       case "toggle-loop":
         return {
           ...state,
@@ -217,57 +217,57 @@ const useSoundController = (client, channel, config, saveConfig) => {
         };
       case "playing":
         const stream = action.value;
-        const { soundQueue, loop, lastPlayed } = state;
-        const playing = stream && { stream, source: soundQueue[0] };
+        const { trackQueue, loop, lastPlayed } = state;
+        const playing = stream && { stream, source: trackQueue[0] };
         return {
           ...state,
           playing,
           // clears last played when queue is done
           lastPlayed:
-            !soundQueue.length && !loop ? playing : playing || lastPlayed,
-          soundQueue: playing
-            ? soundQueue.slice(1)
+            !trackQueue.length && !loop ? playing : playing || lastPlayed,
+          trackQueue: playing
+            ? trackQueue.slice(1)
             : loop == 0
-            ? soundQueue
+            ? trackQueue
             : loop == 1
-            ? soundQueue.concat([lastPlayed.source])
-            : [lastPlayed.source].concat(soundQueue),
+            ? trackQueue.concat([lastPlayed.source])
+            : [lastPlayed.source].concat(trackQueue),
         };
-      case "queue-sound":
+      case "queue-track":
         return {
           ...state,
-          soundQueue: [...state.soundQueue, action.value],
+          trackQueue: [...state.trackQueue, action.value],
         };
-      case "unqueue-sound":
+      case "unqueue-track":
         return {
           ...state,
-          soundQueue: state.soundQueue.filter((_, i) => i !== action.value),
+          trackQueue: state.trackQueue.filter((_, i) => i !== action.value),
         };
       case "toggle-pause":
         return {
           ...state,
           paused: !state.paused,
         };
-      case "play-sound":
+      case "play-track":
         if (state.lastPlayed) state.lastPlayed.stream.destroy();
         return {
           ...state,
           playing: null,
           lastPlayed: null,
-          soundQueue: [action.value],
+          trackQueue: [action.value],
         };
       case "skip": {
-        const { lastPlayed, soundQueue, loop } = state;
+        const { lastPlayed, trackQueue, loop } = state;
         if (lastPlayed) lastPlayed.stream.destroy();
         return {
           ...state,
           lastPlayed: null,
           paused: false,
           playing: null,
-          soundQueue:
+          trackQueue:
             loop == 1 && lastPlayed
-              ? soundQueue.concat([lastPlayed.source])
-              : soundQueue,
+              ? trackQueue.concat([lastPlayed.source])
+              : trackQueue,
         };
       }
       case "stop":
@@ -276,7 +276,7 @@ const useSoundController = (client, channel, config, saveConfig) => {
           ...state,
           playing: null,
           lastPlayed: null,
-          soundQueue: [],
+          trackQueue: [],
         };
       default:
         return state;
@@ -284,14 +284,14 @@ const useSoundController = (client, channel, config, saveConfig) => {
   };
 
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { sounds, soundQueue, playing, paused } = state;
+  const { tracks, trackQueue, playing, paused } = state;
 
   useEffect(
     () =>
       saveConfig({
-        sounds: sounds.map((f) => ({ path: f.path, name: f.name })),
+        tracks: tracks.map((f) => ({ path: f.path, name: f.name, key: f.key })),
       }),
-    [sounds]
+    [tracks]
   );
 
   useEffect(() => {
@@ -305,45 +305,59 @@ const useSoundController = (client, channel, config, saveConfig) => {
 
   useEffect(() => {
     if (!channel) {
-      if (playing || soundQueue.length) {
+      if (playing || trackQueue.length) {
         dispatch({ type: "stop" });
       }
       return;
     }
-    if (!soundQueue.length || playing) return;
+    if (!trackQueue.length || playing) return;
 
     client.voice.connections.each((con) => {
-      const stream = con.play(soundQueue[0].path);
+      const stream = con.play(trackQueue[0].path);
       dispatch({ type: "playing", value: stream });
       stream.on("finish", () => dispatch({ type: "playing" }));
     });
-  }, [channel, soundQueue, playing]);
+  }, [channel, trackQueue, playing]);
 
   return [state, dispatch];
 };
 
-const Sound = ({ sound, queueSound, playSound, deleteSound, ...rest }) => {
+const Track = ({
+  track,
+  queueTrack,
+  playTrack,
+  configureShortcuts,
+  deleteTrack,
+  ...rest
+}) => {
   return e(
     "div",
-    { className: "sound", ...rest },
-    e("div", null, sound.name),
+    { className: "track", ...rest },
+    e("div", null, track.name),
+    e("div", null, track.key),
     e("img", {
-      className: `symbol ${playSound ? "selectable" : "disabled"}`,
+      className: `symbol ${playTrack ? "selectable" : "disabled"}`,
       title: "play",
       src: playSVG,
-      onClick: playSound,
+      onClick: playTrack,
     }),
     e("img", {
-      className: `symbol ${queueSound ? "selectable" : "disabled"}`,
+      className: `symbol ${queueTrack ? "selectable" : "disabled"}`,
       title: "add to queue",
       src: listSVG,
-      onClick: queueSound,
+      onClick: queueTrack,
+    }),
+    e("img", {
+      className: "symbol selectable",
+      title: "bind shortcuts",
+      src: settingsSVG,
+      onClick: configureShortcuts,
     }),
     e("img", {
       className: "symbol selectable",
       title: "remove",
       src: trashSVG,
-      onClick: deleteSound,
+      onClick: deleteTrack,
     })
   );
 };
@@ -351,9 +365,9 @@ const Sound = ({ sound, queueSound, playSound, deleteSound, ...rest }) => {
 let draggedOver;
 const Player = ({ client, channel, config, saveConfig }) => {
   const [
-    { loop, playing, paused, sounds, soundQueue },
+    { loop, playing, paused, tracks, trackQueue },
     dispatch,
-  ] = useSoundController(client, channel, config, saveConfig);
+  ] = useTrackController(client, channel, config, saveConfig);
 
   const inputRef = useRef(null);
   return e(
@@ -374,7 +388,7 @@ const Player = ({ client, channel, config, saveConfig }) => {
           onDrop: (ev) => {
             ev.preventDefault();
             dispatch({
-              type: "add-sounds",
+              type: "add-tracks",
               value: new Array(...ev.dataTransfer.items)
                 .filter((i) => i.kind === "file" && /audio\/.*/.test(i.type))
                 .map((i) => i.getAsFile()),
@@ -391,11 +405,11 @@ const Player = ({ client, channel, config, saveConfig }) => {
           hidden: true,
           onChange: (ev) =>
             dispatch({
-              type: "add-sounds",
+              type: "add-tracks",
               value: new Array(...ev.target.files),
             }),
         }),
-        "import sounds"
+        "import tracks"
       ),
       !playing &&
         e("img", {
@@ -431,8 +445,8 @@ const Player = ({ client, channel, config, saveConfig }) => {
       }),
       e(
         "div",
-        { id: "sound-queue" },
-        soundQueue.map((s, i) =>
+        { id: "track-queue" },
+        trackQueue.map((s, i) =>
           e(
             "div",
             { key: i, className: "queue-item" },
@@ -440,7 +454,7 @@ const Player = ({ client, channel, config, saveConfig }) => {
             e("img", {
               className: "symbol selectable",
               src: trashSVG,
-              onClick: () => dispatch({ type: "unqueue-sound", value: i }),
+              onClick: () => dispatch({ type: "unqueue-track", value: i }),
             })
           )
         )
@@ -454,17 +468,22 @@ const Player = ({ client, channel, config, saveConfig }) => {
     e(
       "div",
       {
-        id: "sound-list",
+        id: "track-list",
       },
-      sounds.map((f, i) =>
-        e(Sound, {
+      tracks.map((f, i) =>
+        e(Track, {
           key: f.path,
-          sound: f,
-          deleteSound: () => dispatch({ type: "remove-sound", value: f }),
-          queueSound:
-            channel && (() => dispatch({ type: "queue-sound", value: f })),
-          playSound:
-            channel && (() => dispatch({ type: "play-sound", value: f })),
+          track: f,
+          deleteTrack: () => dispatch({ type: "remove-track", value: f }),
+          configureShortcuts: () =>
+            dispatch({
+              type: "configure-shortcuts",
+              value: { track: f.path, key: f.key },
+            }),
+          queueTrack:
+            channel && (() => dispatch({ type: "queue-track", value: f })),
+          playTrack:
+            channel && (() => dispatch({ type: "play-track", value: f })),
           "data-id": i,
           draggable: true,
           onDragStart: (e) => {
@@ -475,7 +494,7 @@ const Player = ({ client, channel, config, saveConfig }) => {
             let to = +draggedOver.dataset.id;
             if (i < to) --to;
             if (draggedOver.classList.contains("insert-after")) ++to;
-            dispatch({ type: "reorder-sounds", value: [i, to] });
+            dispatch({ type: "reorder-tracks", value: [i, to] });
             draggedOver.classList.toggle("insert-before", false);
             draggedOver.classList.toggle("insert-after", false);
           },
