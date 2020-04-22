@@ -1,6 +1,6 @@
 {
   "name": "DiscordSoundBot",
-  "version": "0.3.0-beta",
+  "version": "0.4.0-beta",
   "description": "A discord bot for playing sounds locally",
   "productName": "DiscordSoundBot",
   "main": ".webpack/main",
@@ -45,7 +45,7 @@
           "name": "@electron-forge/maker-squirrel",
           "config": {
             "name": "DiscordSoundBot",
-            "remoteReleases": "https://github.com/KittenHero/DiscordSoundBot/releases/download/v0.2.0-beta/"
+            "remoteReleases": "https://github.com/KittenHero/DiscordSoundBot/releases/download/v0.3.0-beta/"
           }
         },
         {

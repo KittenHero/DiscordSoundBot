@@ -11,8 +11,9 @@ A discord bot for playing sounds locally
 + [ ] layers (mixing)??
 + [ ] midi input (+ synth)??
 + [ ] ux improvements
-- [ ] youtube / url import
-- [x] shortcuts
-- [x] drop file import
-- [x] save file list + bot token
-- [x] fix logout
++ [ ] youtube / url import
++ [ ] reorder queue?
++ [x] shortcuts
++ [x] drop file import
++ [x] save file list + bot token
++ [x] fix logout
