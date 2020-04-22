@@ -58,7 +58,7 @@ const createWindow = () => {
   ipcMain.handle("unregister-shortcuts", () => globalShortcut.unregisterAll());
   ipcMain.handle("register-shortcuts", (_event, shortcuts) => {
     shortcuts.forEach((s) =>
-      globalShortcut.register(s.key, () => {
+      globalShortcut.register(s.keys, () => {
         mainWindow.webContents.send("shortcut-triggered", s);
       })
     );

@@ -7,7 +7,7 @@
   --light-highlight: #fff3;
   --light-highlight-fg: #fff;
   --form-bg: #fff;
-  --modal-bg: #000a;
+  --modal-bg: var(--primary-bg);
   --disabled-bg: #999;
   --disabled-fg: #fff;
   --link: #0077cc;
@@ -61,11 +61,13 @@ body {
 }
 
 .symbol {
+  background: var(--src);
   filter: invert(0.6);
   height: 2em;
 }
 
-.symbol:not(.disabled):hover {
+.symbol:not(.disabled):hover,
+.symbol:not(.disabled):focus {
   filter: invert(1);
 }
 
@@ -120,8 +122,13 @@ main#app > div > :nth-child(2) {
   justify-self: end;
 }
 
-input {
+input,
+select {
   padding: 0.5em;
+}
+
+select {
+  background: var(--form-bg);
 }
 
 .user-label {
@@ -196,11 +203,12 @@ input {
 }
 
 .button:not([disabled]),
-.selectable:hover {
+.selectable {
   cursor: pointer;
 }
 
 .selected,
+.selectable:focus,
 .selectable:hover {
   border-radius: 0.25em;
   transition: all 0.5s ease;
@@ -209,19 +217,20 @@ input {
 }
 
 .selectable:hover .icon,
+.selectable:focus .icon,
 .selected .icon {
   border-radius: 25%;
 }
 
 #sound-controller {
-  grid: repeat(4, 2.3125em) / repeat(auto-fill, minmax(2.3125em, 1fr));
-  gap: 0.25em;
+  grid: repeat(4, 1.5em) / repeat(auto-fill, minmax(1.5em, 1fr));
+  gap: 0.625em;
   grid-auto-flow: dense;
   place-items: stretch;
 }
 
 #file-import {
-  grid-area: span 4 / span 4;
+  grid-area: span 5 / span 5;
   position: relative;
   padding: 1em;
   border: 1px dashed;
@@ -240,17 +249,17 @@ input {
 }
 
 #sound-controller .symbol {
-  height: 2em;
+  height: 1.5em;
 }
 
 #playing {
-  grid-column: span 4;
+  grid-column: span 5;
   overflow: auto hidden;
   white-space: nowrap;
 }
 
 #track-queue {
-  grid-area: span 4 / span 4;
+  grid-area: span 5 / span 5;
   max-height: 10em;
   overflow: auto;
   place-content: flex-start;
@@ -279,7 +288,7 @@ input {
   border: 1px solid;
   border-radius: 0.5em;
   padding: 0.5em;
-  grid: 2em repeat(2, 1em) / repeat(4, 1em);
+  grid: 2em repeat(2, 1em) / repeat(3, 1em);
   gap: 0.5em;
   place-content: center space-between;
 }
@@ -289,7 +298,7 @@ input {
 }
 
 .track > div {
-  grid-column: span 4;
+  grid-column: span 3;
   place-items: center start;
   overflow: auto hidden;
   white-space: nowrap;
@@ -311,9 +320,9 @@ input {
   width: 100%;
   height: 100%;
   background: var(--modal-bg);
-  place-content: center;
-  grid-auto-flow: column;
-  gap: 1em 0.5em;
+  gap: 1em;
+  padding: 2em 3em;
+  overflow-y: auto;
 }
 
 .modal::after {
@@ -326,6 +335,35 @@ input {
   cursor: pointer;
 }
 
-select {
-  background: var(--form-bg);
+#shortcut-modal {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+#shortcut-modal label {
+  display: flex;
+  justify-content: stretch;
+  flex-wrap: wrap;
+  margin: 0.5em 0;
+}
+
+#shortcut-modal span {
+  flex: 1;
+  place-self: center;
+}
+
+#shortcut-modal input,
+#shortcut-modal select {
+  width: 10em;
+}
+
+#shortcut-modal input {
+  justify-self: end;
+  text-align: end;
+}
+
+#shortcut-modal button {
+  margin-left: auto;
+  width: max-content;
 }
