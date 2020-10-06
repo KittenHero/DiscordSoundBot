@@ -98,7 +98,7 @@
     "babel-loader": "^8.1.0",
     "babel-plugin-transform-require-default": "^0.1.5",
     "css-loader": "^3.5.1",
-    "electron": "8.2.4",
+    "electron": "8.5.2",
     "prettier": "^2.0.4",
     "style-loader": "^0.23.1",
     "url-loader": "^4.1.0"
